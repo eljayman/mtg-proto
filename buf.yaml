@@ -4,6 +4,8 @@ modules:
 lint:
   use:
     - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX   # we handle versioning at repo level, not package name
 breaking:
   use:
-    - FILE
+    - WIRE_COMPATIBLE          # only flag wire-breaking changes, not source-breaking

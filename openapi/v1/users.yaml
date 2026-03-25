@@ -1,137 +1,214 @@
-openapi: "3.0.3"
+openapi: "3.1.0"
 info:
-  title: MTG Users API
-  version: "1.0.0"
-  description: User management API for the MTG collection platform.
+  title: MTG User & Auth API
+  version: "0.1.0"
+
+servers:
+  - url: /v1
 
 paths:
-  /api/v1/users:
+
+  /auth/register:
     post:
-      operationId: createUser
+      operationId: registerUser
       summary: Register a new user
-      tags:
-        - users
+      tags: [auth]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateUserRequest"
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
         "201":
-          description: User created.
+          description: User created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                $ref: '#/components/schemas/AuthResponse'
+        "400":
+          $ref: 'common.yaml#/components/responses/BadRequest'
         "409":
-          description: Username already taken.
+          description: Email already registered
           content:
             application/json:
               schema:
-                $ref: "common.yaml#/components/schemas/Error"
+                $ref: 'common.yaml#/components/schemas/Error'
 
-  /api/v1/users/{id}:
-    get:
-      operationId: getUser
-      summary: Get a user by ID
-      tags:
-        - users
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: User found.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "404":
-          description: User not found.
-          content:
-            application/json:
-              schema:
-                $ref: "common.yaml#/components/schemas/Error"
-    put:
-      operationId: updateUser
-      summary: Update a user's profile
-      tags:
-        - users
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
+  /auth/login:
+    post:
+      operationId: loginUser
+      summary: Login and receive tokens
+      tags: [auth]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateUserRequest"
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         "200":
-          description: User updated.
+          description: Authenticated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
-        "404":
-          description: User not found.
+                $ref: '#/components/schemas/AuthResponse'
+        "401":
+          $ref: 'common.yaml#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Exchange a refresh token for a new access token
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        "200":
+          description: New access token issued
           content:
             application/json:
               schema:
-                $ref: "common.yaml#/components/schemas/Error"
+                $ref: '#/components/schemas/AuthResponse'
+        "401":
+          $ref: 'common.yaml#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      summary: Invalidate refresh token
+      tags: [auth]
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Logged out
+
+  /users/me:
+    get:
+      operationId: getMe
+      summary: Get current authenticated user
+      tags: [users]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "401":
+          $ref: 'common.yaml#/components/responses/Unauthorized'
+
+    patch:
+      operationId: updateMe
+      summary: Update current user profile
+      tags: [users]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "400":
+          $ref: 'common.yaml#/components/responses/BadRequest'
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
-    CreateUserRequest:
+
+    RegisterRequest:
       type: object
-      required:
-        - username
-        - email
+      required: [email, password, display_name]
       properties:
-        username:
-          type: string
-          minLength: 3
-          maxLength: 32
         email:
           type: string
           format: email
+        password:
+          type: string
+          minLength: 12
         display_name:
+          type: string
+          minLength: 2
+          maxLength: 64
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
           type: string
 
-    UpdateUserRequest:
+    RefreshRequest:
       type: object
+      required: [refresh_token]
       properties:
-        email:
+        refresh_token:
           type: string
-          format: email
-        display_name:
+
+    AuthResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, user]
+      properties:
+        access_token:
           type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+        user:
+          $ref: '#/components/schemas/User'
 
     User:
       type: object
-      required:
-        - id
-        - username
-        - email
+      required: [id, email, display_name, created_at]
       properties:
         id:
           type: string
-        username:
-          type: string
+          format: uuid
         email:
           type: string
+          format: email
         display_name:
           type: string
+        role:
+          type: string
+          enum: [user, admin]
+          default: user
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 64
