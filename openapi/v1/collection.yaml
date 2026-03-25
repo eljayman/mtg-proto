@@ -1,0 +1,299 @@
+openapi: "3.1.0"
+info:
+  title: MTG Collection API
+  version: "0.1.0"
+  description: Manages a user's owned cards — quantities, conditions, and finishes.
+
+servers:
+  - url: /v1
+
+paths:
+
+  /collection:
+    get:
+      operationId: listCollectionEntries
+      summary: List all cards in the authenticated user's collection
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: 'common.yaml#/components/parameters/PageParam'
+        - $ref: 'common.yaml#/components/parameters/PageSizeParam'
+        - name: set_code
+          in: query
+          schema:
+            type: string
+        - name: condition
+          in: query
+          schema:
+            $ref: '#/components/schemas/Condition'
+        - name: finish
+          in: query
+          schema:
+            $ref: '#/components/schemas/Finish'
+      responses:
+        "200":
+          description: Paginated collection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CollectionEntry'
+                  meta:
+                    $ref: 'common.yaml#/components/schemas/PaginationMeta'
+        "401":
+          $ref: 'common.yaml#/components/responses/Unauthorized'
+
+    post:
+      operationId: addCollectionEntry
+      summary: Add a card to the collection
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCollectionEntryRequest'
+      responses:
+        "201":
+          description: Entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionEntry'
+        "400":
+          $ref: 'common.yaml#/components/responses/BadRequest'
+        "401":
+          $ref: 'common.yaml#/components/responses/Unauthorized'
+
+  /collection/{entry_id}:
+    get:
+      operationId: getCollectionEntry
+      summary: Get a single collection entry
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Collection entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionEntry'
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+
+    patch:
+      operationId: updateCollectionEntry
+      summary: Update quantity or condition of an entry
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionEntryRequest'
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionEntry'
+        "400":
+          $ref: 'common.yaml#/components/responses/BadRequest'
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+
+    delete:
+      operationId: deleteCollectionEntry
+      summary: Remove an entry from the collection
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Entry deleted
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+
+  /collection/bulk:
+    post:
+      operationId: bulkAddCollectionEntries
+      summary: Add multiple cards at once (e.g. from camera scan batch)
+      tags: [collection]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    $ref: '#/components/schemas/AddCollectionEntryRequest'
+      responses:
+        "207":
+          description: Multi-status — returns per-entry success or error
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BulkAddResult'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    Condition:
+      type: string
+      enum: [near_mint, lightly_played, moderately_played,
+             heavily_played, damaged]
+      description: >
+        Standard TCG condition grading scale.
+        near_mint = NM, lightly_played = LP, etc.
+
+    Finish:
+      type: string
+      enum: [nonfoil, foil, etched]
+
+    CollectionEntry:
+      type: object
+      required: [id, user_id, card_uuid, quantity, condition, finish, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        card_uuid:
+          type: string
+          format: uuid
+          description: References Card.uuid from the cards domain
+        quantity:
+          type: integer
+          minimum: 1
+        condition:
+          $ref: '#/components/schemas/Condition'
+        finish:
+          $ref: '#/components/schemas/Finish'
+        language:
+          type: string
+          default: en
+        notes:
+          type: string
+          maxLength: 500
+        acquired_price:
+          type: number
+          format: float
+          description: Optional — what you paid for this copy
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AddCollectionEntryRequest:
+      type: object
+      required: [card_uuid, quantity, condition, finish]
+      properties:
+        card_uuid:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        condition:
+          $ref: '#/components/schemas/Condition'
+        finish:
+          $ref: '#/components/schemas/Finish'
+        language:
+          type: string
+          default: en
+        notes:
+          type: string
+          maxLength: 500
+        acquired_price:
+          type: number
+          format: float
+
+    UpdateCollectionEntryRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 0
+          description: Set to 0 to effectively zero out without deleting the record
+        condition:
+          $ref: '#/components/schemas/Condition'
+        finish:
+          $ref: '#/components/schemas/Finish'
+        notes:
+          type: string
+          maxLength: 500
+        acquired_price:
+          type: number
+          format: float
+
+    BulkAddResult:
+      type: object
+      required: [index, success]
+      properties:
+        index:
+          type: integer
+          description: Position in the original request array
+        success:
+          type: boolean
+        entry:
+          $ref: '#/components/schemas/CollectionEntry'
+        error:
+          $ref: 'common.yaml#/components/schemas/Error'

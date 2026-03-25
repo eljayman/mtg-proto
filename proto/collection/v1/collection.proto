@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package collection.v1;
+
+option go_package = "github.com/yourusername/mtg-proto/gen/proto/collection/v1;collectionv1";
+
+import "google/protobuf/timestamp.proto";
+
+// CollectionService is the internal gRPC interface for svc-collection.
+// The API gateway translates REST calls to these RPCs.
+service CollectionService {
+  rpc GetEntry(GetEntryRequest)         returns (GetEntryResponse);
+  rpc ListEntries(ListEntriesRequest)   returns (ListEntriesResponse);
+  rpc AddEntry(AddEntryRequest)         returns (AddEntryResponse);
+  rpc UpdateEntry(UpdateEntryRequest)   returns (UpdateEntryResponse);
+  rpc DeleteEntry(DeleteEntryRequest)   returns (DeleteEntryResponse);
+  rpc BulkAddEntries(BulkAddRequest)    returns (BulkAddResponse);
+}
+
+message CollectionEntry {
+  string uuid            = 1;
+  string user_id         = 2;
+  string card_uuid       = 3;
+  int32  quantity        = 4;
+  string condition       = 5; // near_mint | lightly_played | moderately_played | heavily_played | damaged
+  string finish          = 6; // nonfoil | foil | etched
+  string language        = 7;
+  string notes           = 8;
+  float  acquired_price  = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message GetEntryRequest {
+  string entry_id = 1;
+  string user_id  = 2; // used for ownership check
+}
+
+message GetEntryResponse {
+  CollectionEntry entry = 1;
+}
+
+message ListEntriesRequest {
+  string user_id   = 1;
+  string set_code  = 2;
+  string condition = 3;
+  string finish    = 4;
+  int32  page      = 5;
+  int32  page_size = 6;
+}
+
+message ListEntriesResponse {
+  repeated CollectionEntry entries = 1;
+  int32                    total   = 2;
+}
+
+message AddEntryRequest {
+  string user_id       = 1;
+  string card_uuid     = 2;
+  int32  quantity      = 3;
+  string condition     = 4;
+  string finish        = 5;
+  string language      = 6;
+  string notes         = 7;
+  float  acquired_price = 8;
+}
+
+message AddEntryResponse {
+  CollectionEntry entry = 1;
+}
+
+message UpdateEntryRequest {
+  string entry_id      = 1;
+  string user_id       = 2;
+  int32  quantity      = 3;
+  string condition     = 4;
+  string finish        = 5;
+  string notes         = 6;
+  float  acquired_price = 7;
+}
+
+message UpdateEntryResponse {
+  CollectionEntry entry = 1;
+}
+
+message DeleteEntryRequest {
+  string entry_id = 1;
+  string user_id  = 2;
+}
+
+message DeleteEntryResponse {}
+
+message BulkAddRequest {
+  repeated AddEntryRequest entries = 1;
+}
+
+message BulkAddResult {
+  int32           index   = 1;
+  bool            success = 2;
+  CollectionEntry entry   = 3;
+  string          error   = 4;
+}
+
+message BulkAddResponse {
+  repeated BulkAddResult results = 1;
+}

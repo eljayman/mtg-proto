@@ -1,0 +1,15 @@
+package: usersv1
+output: ../../gen/openapi/users/v1/users.gen.go
+generate:
+  models: true
+  client: true
+  embedded-spec: false
+import-mapping:
+  common.yaml: github.com/yourusername/mtg-proto/gen/openapi/common/v1
+```
+
+Tell Claude Code:
+```
+Create these three missing files in openapi/v1/, then re-run `make generate-openapi`. 
+Replace "yourusername" with my GitHub username. Commit with message 
+"chore: add oapi-codegen config files"

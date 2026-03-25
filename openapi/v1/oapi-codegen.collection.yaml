@@ -1,0 +1,8 @@
+package: collectionv1
+output: ../../gen/openapi/collection/v1/collection.gen.go
+generate:
+  models: true
+  client: true
+  embedded-spec: false
+import-mapping:
+  common.yaml: github.com/yourusername/mtg-proto/gen/openapi/common/v1

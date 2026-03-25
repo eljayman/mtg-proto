@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package cards.v1;
+
+option go_package = "github.com/yourusername/mtg-proto/gen/proto/cards/v1;cardsv1";
+
+import "google/protobuf/timestamp.proto";
+
+// CardService is used internally by other services that need card metadata
+// without going through the HTTP gateway — e.g. svc-collection resolving
+// a card_uuid to its display name and image.
+service CardService {
+  rpc GetCard(GetCardRequest) returns (GetCardResponse);
+  rpc GetCardBatch(GetCardBatchRequest) returns (GetCardBatchResponse);
+  rpc SearchCards(SearchCardsRequest) returns (SearchCardsResponse);
+}
+
+message GetCardRequest {
+  string uuid = 1; // MTGJSON UUID
+}
+
+message GetCardResponse {
+  Card card = 1;
+}
+
+message GetCardBatchRequest {
+  repeated string uuids = 1;
+}
+
+message GetCardBatchResponse {
+  repeated Card cards = 1;
+}
+
+message SearchCardsRequest {
+  string name        = 1;
+  string set_code    = 2;
+  string rarity      = 3;
+  int32  page        = 4;
+  int32  page_size   = 5;
+}
+
+message SearchCardsResponse {
+  repeated CardSummary cards = 1;
+  int32                total = 2;
+}
+
+message CardSummary {
+  string uuid             = 1;
+  string scryfall_id      = 2;
+  string name             = 3;
+  string set_code         = 4;
+  string collector_number = 5;
+  string rarity           = 6;
+  string image_uri        = 7;
+  repeated string color_identity = 8;
+}
+
+message Card {
+  CardSummary        summary     = 1;
+  string             mana_cost   = 2;
+  float              mana_value  = 3;
+  string             type_line   = 4;
+  string             oracle_text = 5;
+  string             power       = 6;
+  string             toughness   = 7;
+  CardIdentifiers    identifiers = 8;
+  repeated string    finishes    = 9;
+  repeated string    keywords    = 10;
+  map<string,string> legalities  = 11;
+}
+
+message CardIdentifiers {
+  string mtgjson_uuid         = 1;
+  string scryfall_id          = 2;
+  string tcgplayer_product_id = 3;
+  string cardmarket_id        = 4;
+  string cardkingdom_id       = 5;
+}

@@ -1,0 +1,65 @@
+openapi: "3.0.3"
+info:
+  title: MTG Common Schemas
+  version: "1.0.0"
+  description: Shared schemas for the MTG collection platform.
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags:
+        - health
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+
+    PaginationParams:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        page_token:
+          type: string
+
+    PaginatedResponse:
+      type: object
+      properties:
+        next_page_token:
+          type: string
+        total_count:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string

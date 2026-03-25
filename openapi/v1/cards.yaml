@@ -1,0 +1,287 @@
+openapi: "3.1.0"
+info:
+  title: MTG Card Data API
+  version: "0.1.0"
+  description: >
+    Read-only card identity and metadata. Data is sourced from MTGJSON
+    and Scryfall. This API does not manage user collections.
+
+servers:
+  - url: /v1
+
+paths:
+
+  /cards:
+    get:
+      operationId: listCards
+      summary: Search and list cards
+      tags: [cards]
+      parameters:
+        - $ref: 'common.yaml#/components/parameters/PageParam'
+        - $ref: 'common.yaml#/components/parameters/PageSizeParam'
+        - name: name
+          in: query
+          description: Partial card name search
+          schema:
+            type: string
+        - name: set_code
+          in: query
+          description: Filter by set code e.g. MH3
+          schema:
+            type: string
+        - name: color_identity
+          in: query
+          description: Comma-separated color identity filter e.g. W,U
+          schema:
+            type: string
+        - name: rarity
+          in: query
+          schema:
+            type: string
+            enum: [common, uncommon, rare, mythic, special]
+      responses:
+        "200":
+          description: Paginated list of cards
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CardSummary'
+                  meta:
+                    $ref: 'common.yaml#/components/schemas/PaginationMeta'
+        "400":
+          $ref: 'common.yaml#/components/responses/BadRequest'
+        "500":
+          $ref: 'common.yaml#/components/responses/InternalError'
+
+  /cards/{uuid}:
+    get:
+      operationId: getCard
+      summary: Get full card detail by MTGJSON UUID
+      tags: [cards]
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Full card detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+        "500":
+          $ref: 'common.yaml#/components/responses/InternalError'
+
+  /cards/scryfall/{scryfall_id}:
+    get:
+      operationId: getCardByScryfallId
+      summary: Get card by Scryfall ID
+      tags: [cards]
+      parameters:
+        - name: scryfall_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Full card detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+
+  /sets:
+    get:
+      operationId: listSets
+      summary: List all sets
+      tags: [sets]
+      parameters:
+        - $ref: 'common.yaml#/components/parameters/PageParam'
+        - $ref: 'common.yaml#/components/parameters/PageSizeParam'
+      responses:
+        "200":
+          description: Paginated list of sets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Set'
+                  meta:
+                    $ref: 'common.yaml#/components/schemas/PaginationMeta'
+
+  /sets/{code}:
+    get:
+      operationId: getSet
+      summary: Get set by code
+      tags: [sets]
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 6
+      responses:
+        "200":
+          description: Set detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Set'
+        "404":
+          $ref: 'common.yaml#/components/responses/NotFound'
+
+components:
+  schemas:
+
+    CardSummary:
+      description: Lightweight card representation for list views
+      type: object
+      required: [uuid, name, set_code, collector_number, rarity]
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: MTGJSON UUID — stable primary identifier
+        scryfall_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        set_code:
+          type: string
+        set_name:
+          type: string
+        collector_number:
+          type: string
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, mythic, special]
+        color_identity:
+          type: array
+          items:
+            type: string
+            enum: [W, U, B, R, G, C]
+        image_uri:
+          type: string
+          format: uri
+        is_foil_available:
+          type: boolean
+        is_nonfoil_available:
+          type: boolean
+
+    Card:
+      description: Full card detail
+      allOf:
+        - $ref: '#/components/schemas/CardSummary'
+        - type: object
+          properties:
+            mana_cost:
+              type: string
+            mana_value:
+              type: number
+            type_line:
+              type: string
+            oracle_text:
+              type: string
+            power:
+              type: string
+            toughness:
+              type: string
+            loyalty:
+              type: string
+            keywords:
+              type: array
+              items:
+                type: string
+            legalities:
+              type: object
+              additionalProperties:
+                type: string
+                enum: [legal, not_legal, restricted, banned]
+            rulings:
+              type: array
+              items:
+                $ref: '#/components/schemas/Ruling'
+            identifiers:
+              $ref: '#/components/schemas/CardIdentifiers'
+            language:
+              type: string
+              default: en
+            finishes:
+              type: array
+              items:
+                type: string
+                enum: [foil, nonfoil, etched]
+
+    Ruling:
+      type: object
+      required: [date, text]
+      properties:
+        date:
+          type: string
+          format: date
+        text:
+          type: string
+
+    CardIdentifiers:
+      description: Cross-reference IDs for external systems
+      type: object
+      properties:
+        mtgjson_uuid:
+          type: string
+          format: uuid
+        scryfall_id:
+          type: string
+          format: uuid
+        tcgplayer_product_id:
+          type: string
+        cardmarket_id:
+          type: string
+        cardkingdom_id:
+          type: string
+
+    Set:
+      type: object
+      required: [code, name, release_date, set_type, card_count]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        release_date:
+          type: string
+          format: date
+        set_type:
+          type: string
+          enum: [core, expansion, masters, draft_innovation, commander,
+                 funny, memorabilia, promo, token, treasure_chest, vanguard]
+        card_count:
+          type: integer
+        parent_code:
+          type: string
+          description: For promo or subset variants, the parent set code
+        icon_svg_uri:
+          type: string
+          format: uri

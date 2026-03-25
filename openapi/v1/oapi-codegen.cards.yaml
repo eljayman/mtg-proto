@@ -1,0 +1,8 @@
+package: cardsv1
+output: ../../gen/openapi/cards/v1/cards.gen.go
+generate:
+  models: true
+  client: true
+  embedded-spec: false
+import-mapping:
+  common.yaml: github.com/yourusername/mtg-proto/gen/openapi/common/v1
